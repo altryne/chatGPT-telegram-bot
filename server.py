@@ -1,5 +1,4 @@
 """Make some requests to OpenAI's chatbot"""
-
 import time
 import os
 
@@ -113,23 +112,27 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         print(f"User ID is set to {USER_ID} and the user is not the same")
         await update.message.reply_text("You are not allowed to use this bot")
         return
-
     # Send the message to OpenAI
     send_message(update.message.text)
-    check_loading()
+    await check_loading(update)
     response = get_last_message()
     await update.message.reply_text(response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
 
-def check_loading():
+async def check_loading(update):
     # with a timeout of 45 seconds, created a while loop that checks if loading is done
     loading = PAGE.query_selector_all("button[class^='PromptTextarea__PositionSubmit']>.text-2xl")
     #keep checking len(loading) until it's empty or 45 seconds have passed
+    await application.bot.send_chat_action(update.effective_chat.id, "typing")
     start_time = time.time()
     while len(loading) > 0:
         if time.time() - start_time > 45:
             break
-        time.sleep(0.3)
+        time.sleep(0.5)
         loading = PAGE.query_selector_all("button[class^='PromptTextarea__PositionSubmit']>.text-2xl")
+        await application.bot.send_chat_action(update.effective_chat.id, "typing")
+
+
+
 
 
 
