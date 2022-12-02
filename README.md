@@ -15,14 +15,17 @@
 playwright install
 ```
 
+You need to setup your telegram bot token [how to](https://core.telegram.org/bots/tutorial#obtain-your-bot-token) and [user id](https://bigone.zendesk.com/hc/en-us/articles/360008014894-How-to-get-the-Telegram-user-ID-) in `.env` file.
+Edit the .env.example file and rename it to .env and place your values in there. 
+
+
 * Now run the server
 
 ```
 python server.py
 ```
 
-* The server runs at port `5001`. If you want to change, you can change it in server.py
-
+Then find your bot in telegram (you should have already created it with @botfather) and start chatting. 
 
 # Credit
 
