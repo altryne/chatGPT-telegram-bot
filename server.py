@@ -9,6 +9,7 @@ import logging
 import dotenv
 import nest_asyncio
 
+from functools import wraps
 nest_asyncio.apply()
 dotenv.load_dotenv()
 
@@ -65,12 +66,20 @@ def send_message(message):
     box.fill(message)
     box.press("Enter")
 
+
+class AtrributeError:
+    pass
+
+
 def get_last_message():
     """Get the latest message"""
     page_elements = PAGE.query_selector_all("div[class*='ConversationItem__Message']")
     last_element = page_elements[-1]
     prose = last_element.query_selector(".prose")
-    code_blocks = prose.query_selector_all("pre")
+    try:
+        code_blocks = prose.query_selector_all("pre")
+    except AtrributeError as e:
+        response = 'Server probably disconnected, try running /reload'
     if len(code_blocks) > 0:
         # get all children of prose and add them one by one to respons
         response = ""
@@ -89,7 +98,19 @@ def get_last_message():
         response = escape_markdown(prose.inner_text(), version=2)
     return response
 
+# create a decorator called auth that receives USER_ID as an argument with wraps
+def auth(user_id):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(update, context):
+            if update.effective_user.id == user_id:
+                await func(update, context)
+            else:
+                await update.message.reply_text("You are not authorized to use this bot")
+        return wrapper
+    return decorator
 
+@auth(USER_ID)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
@@ -98,13 +119,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=ForceReply(selective=True),
     )
 
-
+@auth(USER_ID)
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     await update.message.reply_text("Help!")
 
+@auth(USER_ID)
+async def reload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a message when the command /help is issued."""
+    print(f"Got a reload command from user {update.effective_user.id}")
+    PAGE.reload()
+    await update.message.reply_text("Reloaded the browser!")
+    await update.message.reply_text("Let's check if it's workin!")
 
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+@auth(USER_ID)
+async def draw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message."""
     # if USER_ID exists and the sender is not the user, return
     print(f"got message from user {update.effective_user.id}: {update.effective_message.text}")
@@ -112,6 +141,16 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         print(f"User ID is set to {USER_ID} and the user is not the same")
         await update.message.reply_text("You are not allowed to use this bot")
         return
+    # Send the message to OpenAI
+    send_message(update.message.text)
+    await check_loading(update)
+    response = get_last_message()
+    await update.message.reply_text(response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+
+@auth(USER_ID)
+async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Echo the user message."""
+
     # Send the message to OpenAI
     send_message(update.message.text)
     await check_loading(update)
@@ -132,10 +171,6 @@ async def check_loading(update):
         await application.bot.send_chat_action(update.effective_chat.id, "typing")
 
 
-
-
-
-
 def start_browser():
     PAGE.goto("https://chat.openai.com/")
     if not is_logged_in():
@@ -146,6 +181,7 @@ def start_browser():
 
         # on different commands - answer in Telegram
         application.add_handler(CommandHandler("start", start))
+        application.add_handler(CommandHandler("reload", reload))
         application.add_handler(CommandHandler("help", help_command))
 
         # on non command i.e message - echo the message on Telegram
@@ -153,8 +189,6 @@ def start_browser():
 
         # Run the bot until the user presses Ctrl-C
         application.run_polling()
-        print("Logged in")
-        APP.run(port=5001, threaded=False)
 
 if __name__ == "__main__":
     start_browser()
