@@ -2,6 +2,7 @@
 
 * It uses playwright and chromium to open browser and parse html
 * It is an unoffical api for development purpose only.
+* This wont work over SSH or a Docker image, you need to do this on a desktop environment where X server is available. 
 
 ![CleanShot 2022-12-02 at 16 08 27](https://user-images.githubusercontent.com/463317/205404516-56ea908e-dd31-4c53-acb7-15f9f6ed379f.gif)
 
