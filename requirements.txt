@@ -1,4 +1,3 @@
-flask
 playwright
 python-dotenv
 python-telegram-bot==20.0a6
