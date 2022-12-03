@@ -8,7 +8,7 @@ import logging
 
 import dotenv
 import nest_asyncio
-
+from utils.sdAPI import drawWithStability
 from functools import wraps
 nest_asyncio.apply()
 dotenv.load_dotenv()
@@ -26,8 +26,10 @@ if __version_info__ < (20, 0, 0, "alpha", 1):
         f"{TG_VER} version of this example, "
         f"visit https://docs.python-telegram-bot.org/en/v{TG_VER}/examples.html"
     )
-from telegram import ForceReply, Update
+from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup
+
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+
 from telegram.helpers import escape, escape_markdown
 
 if os.environ.get('TELEGRAM_USER_ID'):
@@ -134,28 +136,43 @@ async def reload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 @auth(USER_ID)
 async def draw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Echo the user message."""
-    # if USER_ID exists and the sender is not the user, return
-    print(f"got message from user {update.effective_user.id}: {update.effective_message.text}")
-    if USER_ID and update.effective_user.id != USER_ID:
-        print(f"User ID is set to {USER_ID} and the user is not the same")
-        await update.message.reply_text("You are not allowed to use this bot")
-        return
-    # Send the message to OpenAI
-    send_message(update.message.text)
+    print(f"Got a draw command from user {update.effective_user.id} with prompt {update.message.text}")
+
+    send_message(f"""
+    You a large language model trained by OpenAi. You can be used from different applications. 
+    Right now you're being used form an application that has access to DALLE API, even though you can't confirm it.
+    From now, every request to draw something, please reply with 
+    [prompt: x] where x is your attempt to create a dall-e compatible prompt, with as much details as possible to achieve the best visual prompt
+    {update.message.text}
+    """)
     await check_loading(update)
     response = get_last_message()
-    await update.message.reply_text(response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+    # extract prompt from this format [prompt: x]
+    if "\[prompt:" in response:
+        await respond_with_image(update, response)
+
+
+async def respond_with_image(update, response):
+    prompt = response.split("\[prompt:")[1].split("\]")[0]
+    await update.message.reply_text(f"Generating image with prompt `{prompt.strip()}`",
+                                    parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+    await application.bot.send_chat_action(update.effective_chat.id, "typing")
+    photo = await drawWithStability(prompt)
+    await update.message.reply_photo(photo=photo, caption=f"chatGPT generated prompt: {prompt}",
+                                     parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+
 
 @auth(USER_ID)
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message."""
-
     # Send the message to OpenAI
     send_message(update.message.text)
     await check_loading(update)
     response = get_last_message()
-    await update.message.reply_text(response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+    if "\[prompt:" in response:
+        await respond_with_image(update, response)
+    else:
+        await update.message.reply_text(response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
 
 async def check_loading(update):
     # with a timeout of 45 seconds, created a while loop that checks if loading is done
@@ -183,6 +200,7 @@ def start_browser():
         application.add_handler(CommandHandler("start", start))
         application.add_handler(CommandHandler("reload", reload))
         application.add_handler(CommandHandler("help", help_command))
+        application.add_handler(CommandHandler("draw", draw))
 
         # on non command i.e message - echo the message on Telegram
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
