@@ -72,7 +72,7 @@ def send_message(message):
     box.press("Enter")
 
 
-class AtrributeError:
+class AttributeError:
     pass
 
 
@@ -83,7 +83,7 @@ def get_last_message():
     prose = last_element.query_selector(".prose")
     try:
         code_blocks = prose.query_selector_all("pre")
-    except AtrributeError as e:
+    except AttributeError as e:
         response = 'Server probably disconnected, try running /reload'
     if len(code_blocks) > 0:
         # get all children of prose and add them one by one to respons
@@ -132,10 +132,16 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 @auth(USER_ID)
 async def reload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    print(f"Got a reload command from user {update.effective_user.id}")
+    logging.debug(f"Got a reload command from user {update.effective_user.id}")
     PAGE.reload()
+    if not is_logged_in():
+        print("Please log in to OpenAI Chat")
+        print("Press enter when you're done")
+        await update.message.reply_text("Please log in to OpenAI Chat")
+        input()
+
     await update.message.reply_text("Reloaded the browser!")
-    await update.message.reply_text("Let's check if it's workin!")
+    await update.message.reply_text("Send a message to me check if I'm up!")
 
 @auth(USER_ID)
 async def draw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
