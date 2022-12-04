@@ -1,4 +1,5 @@
 """Make some requests to OpenAI's chatbot"""
+import json
 import time
 import os
 
@@ -8,6 +9,8 @@ import logging
 
 import dotenv
 import nest_asyncio
+
+from utils.googleSearch import googleSearch
 from utils.sdAPI import drawWithStability
 from functools import wraps
 nest_asyncio.apply()
@@ -163,6 +166,42 @@ async def respond_with_image(update, response):
 
 
 @auth(USER_ID)
+async def browse(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = update.message.text.replace('/browse','')
+    await application.bot.send_chat_action(update.effective_chat.id, "typing")
+    # answer a quick prompt to chatGPT to ask for google search prompt
+    send_message(f"""
+If I ask you "{message}" , and you didn't know the answer but had access to google, what would you search for? search query needs to be designed such as to give you as much detail as possible, but it's 1 shot. 
+Answer with
+
+query: x
+
+only, where x is the google search string that would let you help me answer the question
+I want you to only reply with the output inside and nothing else. Do no write explanations.
+    """)
+    await check_loading(update)
+    response = get_last_message()
+    # extract prompt from this format [prompt: x]
+    response.replace('query: ', '')
+    print(f'Clean response from chatGPT {response}')
+    results = googleSearch(message)
+    prompt = f"""
+    Pretend I was able to run a google search for "{message}" instead of you and I got the following results: 
+    \"\"\"
+    {results}
+    \"\"\"
+    Provide a summary of the new facts in a code block, in markdown format
+    Then in another code block, answer the question {message} with the new facts you just learned
+    """
+    send_message(prompt)
+    await check_loading(update)
+    response = get_last_message()
+    if "\[prompt:" in response:
+        await respond_with_image(update, response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+    else:
+        await update.message.reply_text(response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+
+@auth(USER_ID)
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message."""
     # Send the message to OpenAI
@@ -175,13 +214,13 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
 
 async def check_loading(update):
-    # with a timeout of 45 seconds, created a while loop that checks if loading is done
+    # with a timeout of 90 seconds, created a while loop that checks if loading is done
     loading = PAGE.query_selector_all("button[class^='PromptTextarea__PositionSubmit']>.text-2xl")
     #keep checking len(loading) until it's empty or 45 seconds have passed
     await application.bot.send_chat_action(update.effective_chat.id, "typing")
     start_time = time.time()
     while len(loading) > 0:
-        if time.time() - start_time > 45:
+        if time.time() - start_time > 90:
             break
         time.sleep(0.5)
         loading = PAGE.query_selector_all("button[class^='PromptTextarea__PositionSubmit']>.text-2xl")
@@ -201,6 +240,7 @@ def start_browser():
         application.add_handler(CommandHandler("reload", reload))
         application.add_handler(CommandHandler("help", help_command))
         application.add_handler(CommandHandler("draw", draw))
+        application.add_handler(CommandHandler("browse", browse))
 
         # on non command i.e message - echo the message on Telegram
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
