@@ -1,4 +1,4 @@
-# ChatGPT Telegram Bot 
+# ChatGPT Telegram Bot  - @altryne
 ### see [announcement thread on twitter](https://twitter.com/altryne/status/1598822052760195072)
 
 - Uses your local browser using Playwright to run chatGPT in chromium
@@ -7,12 +7,21 @@
 - has a `/draw` command in telegram to draw pictures using stable diffusion! 
 - more stuff coming after I rest
 
+## Features 
+- [ ] Chat with chatGPT from your Telegram! On the go! 📱
+- [ ] `/draw` pictures using stable diffusion! `0.0.2` 
+  - Just add STABILITY_API_KEY in .env
+- [ ] `/browse` give chatGPT google access!! `0.0.3` 
+  - Just add SERP_API_KEY in .env 
+
+
+
 ![CleanShot 2022-12-02 at 16 08 27](https://user-images.githubusercontent.com/463317/205404516-56ea908e-dd31-4c53-acb7-15f9f6ed379f.gif)
 
 
 # How to install
 
-* Make sure that python and virual environment is installed.
+* Make sure that python and miniconda are installed.
 
 * Create a conda environment with `conda env create -f environment.yml`
 
@@ -21,8 +30,9 @@
 playwright install
 ```
 
-You need to setup your telegram bot token [how to](https://core.telegram.org/bots/tutorial#obtain-your-bot-token) and [user id](https://bigone.zendesk.com/hc/en-us/articles/360008014894-How-to-get-the-Telegram-user-ID-) in `.env` file.
-Edit the .env.example file and rename it to .env and place your values in there. 
+- You need to setup your telegram bot token [how to](https://core.telegram.org/bots/tutorial#obtain-your-bot-token) and [user id](https://bigone.zendesk.com/hc/en-us/articles/360008014894-How-to-get-the-Telegram-user-ID-) in `.env` file.
+
+- Edit the .env.example file and rename it to .env and place your values in there. 
 
 
 * Now run the server
@@ -34,5 +44,5 @@ python server.py
 Then find your bot in telegram (you should have already created it with @botfather) and start chatting. 
 
 # Credit
-
+* Creator [@Altryne](https://twitter.com/altryne/status/1598902799625961472) on Twitter  
 * Got started with this using [Daniel Gross's whatsapp gpt](https://github.com/danielgross/whatsapp-gpt) package.
