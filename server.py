@@ -189,7 +189,7 @@ I want you to only reply with the output inside and nothing else. Do no write ex
     response = get_last_message()
     # extract prompt from this format [prompt: x]
     response.replace('query: ', '')
-    print(f'Clean response from chatGPT {response}')
+    logging.info(f'Clean response from chatGPT {response}')
     results = googleSearch(message)
     prompt = f"""
     Pretend I was able to run a google search for "{message}" instead of you and I got the following results: 
