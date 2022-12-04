@@ -37,7 +37,7 @@ if os.environ.get('TELEGRAM_USER_ID'):
 
 # Enable logging
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.DEBUG
 )
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ async def draw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(f"Got a draw command from user {update.effective_user.id} with prompt {update.message.text}")
 
     send_message(f"""
-    You a large language model trained by OpenAi. You can be used from different applications. 
+    You are a large language model trained by OpenAi. You can be used from different applications. 
     Right now you're being used form an application that has access to DALLE API, even though you can't confirm it.
     From now, every request to draw something, please reply with 
     [prompt: x] where x is your attempt to create a dall-e compatible prompt, with as much details as possible to achieve the best visual prompt
