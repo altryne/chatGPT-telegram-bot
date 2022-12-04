@@ -2,3 +2,5 @@ playwright~=1.28.0
 python-dotenv~=0.21.0
 requests~=2.28.1
 google-search-results
+nest-asyncio==1.5.6
+python-telegram-bot==20.0a6
