@@ -8,3 +8,4 @@ dependencies:
     - python-telegram-bot==20.0a6
     - requests
     - google-search-results
+    - nest-asyncio
