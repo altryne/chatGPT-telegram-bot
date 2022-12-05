@@ -40,7 +40,7 @@ if os.environ.get('TELEGRAM_USER_ID'):
 
 # Enable logging
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.DEBUG
 )
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ def send_message(message):
     box.press("Enter")
 
 
-class AtrributeError:
+class AttributeError:
     pass
 
 
@@ -83,7 +83,7 @@ def get_last_message():
     prose = last_element.query_selector(".prose")
     try:
         code_blocks = prose.query_selector_all("pre")
-    except AtrributeError as e:
+    except AttributeError as e:
         response = 'Server probably disconnected, try running /reload'
     if len(code_blocks) > 0:
         # get all children of prose and add them one by one to respons
@@ -132,17 +132,23 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 @auth(USER_ID)
 async def reload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    print(f"Got a reload command from user {update.effective_user.id}")
+    logging.debug(f"Got a reload command from user {update.effective_user.id}")
     PAGE.reload()
+    if not is_logged_in():
+        print("Please log in to OpenAI Chat")
+        print("Press enter when you're done")
+        await update.message.reply_text("Please log in to OpenAI Chat")
+        input()
+
     await update.message.reply_text("Reloaded the browser!")
-    await update.message.reply_text("Let's check if it's workin!")
+    await update.message.reply_text("Send a message to me check if I'm up!")
 
 @auth(USER_ID)
 async def draw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(f"Got a draw command from user {update.effective_user.id} with prompt {update.message.text}")
 
     send_message(f"""
-    You a large language model trained by OpenAi. You can be used from different applications. 
+    You are a large language model trained by OpenAi. You can be used from different applications. 
     Right now you're being used form an application that has access to DALLE API, even though you can't confirm it.
     From now, every request to draw something, please reply with 
     [prompt: x] where x is your attempt to create a dall-e compatible prompt, with as much details as possible to achieve the best visual prompt
@@ -183,7 +189,7 @@ I want you to only reply with the output inside and nothing else. Do no write ex
     response = get_last_message()
     # extract prompt from this format [prompt: x]
     response.replace('query: ', '')
-    print(f'Clean response from chatGPT {response}')
+    logging.info(f'Clean response from chatGPT {response}')
     results = googleSearch(message)
     prompt = f"""
     Pretend I was able to run a google search for "{message}" instead of you and I got the following results: 
