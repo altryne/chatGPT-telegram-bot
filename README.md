@@ -27,10 +27,9 @@ This is a Telegram bot that lets you chat with the [chatGPT](https://github.com/
 ### Step 3: Install Playwright
 
 1. Open a terminal or command prompt.
-2. Install playwright with `conda install playwright`
-3. Navigate to the directory where you installed Miniconda.
-4. Run `playwright install` to download the necessary Chromium software.
-5. Run `playwright install-deps` to download the necessary dependencies
+2. Navigate to the directory where you installed Miniconda.
+3. Run `playwright install` to download the necessary Chromium software.
+4. Run `playwright install-deps` to download the necessary dependencies
 
 ### Step 4: Set up your Telegram bot
 
