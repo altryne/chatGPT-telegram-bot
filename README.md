@@ -23,6 +23,7 @@ This is a Telegram bot that lets you chat with the [chatGPT](https://github.com/
 1. Open a terminal or command prompt.
 2. Navigate to the directory where you want to create the environment.
 3. Run `conda env create -f environment.yml` to create the environment.
+4. Activate the newly created environment `conda activate chat`
 
 ### Step 3: Install Playwright
 
