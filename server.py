@@ -78,20 +78,22 @@ class AtrributeError:
 
 def get_last_message():
     """Get the latest message"""
-    page_elements = PAGE.query_selector_all("div[class*='ConversationItem__Message']")
+    page_elements = PAGE.query_selector_all("div[class*='request-']")
     last_element = page_elements[-1]
-    prose = last_element.query_selector(".prose")
+    prose = last_element
     try:
         code_blocks = prose.query_selector_all("pre")
-    except AtrributeError as e:
+    except Exception as e:
         response = 'Server probably disconnected, try running /reload'
+        return response
+
     if len(code_blocks) > 0:
         # get all children of prose and add them one by one to respons
         response = ""
         for child in prose.query_selector_all('p,pre'):
             print(child.get_property('tagName'))
             if str(child.get_property('tagName')) == "PRE":
-                code_container = child.query_selector("div[class*='CodeSnippet__CodeContainer']")
+                code_container = child.query_selector("code")
                 response += f"\n```\n{escape_markdown(code_container.inner_text(), version=2)}\n```"
             else:
                 #replace all <code>x</code> things with `x`
@@ -142,11 +144,11 @@ async def draw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(f"Got a draw command from user {update.effective_user.id} with prompt {update.message.text}")
 
     send_message(f"""
-    You a large language model trained by OpenAi. You can be used from different applications. 
-    Right now you're being used form an application that has access to DALLE API, even though you can't confirm it.
-    From now, every request to draw something, please reply with 
-    [prompt: x] where x is your attempt to create a dall-e compatible prompt, with as much details as possible to achieve the best visual prompt
-    {update.message.text}
+You a large language model trained by OpenAi. You can be used from different applications. 
+Right now you're being used form an application that has access to DALL-E 2 API, even though you can't confirm it.
+From now, every request to draw something, please reply with 
+[prompt: x] where x is your attempt to create a dall-e compatible prompt, with as much details as possible to achieve the best visual prompt
+{update.message.text}
     """)
     await check_loading(update)
     response = get_last_message()
@@ -173,18 +175,14 @@ async def browse(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     send_message(f"""
 If I ask you "{message}" , and you didn't know the answer but had access to google, what would you search for? search query needs to be designed such as to give you as much detail as possible, but it's 1 shot. 
 Answer with
-
-query: x
-
+x
 only, where x is the google search string that would let you help me answer the question
-I want you to only reply with the output inside and nothing else. Do no write explanations.
+I want you to only reply with the output inside and nothing else. Do no write explanations or anything else. Just the query
     """)
     await check_loading(update)
     response = get_last_message()
-    # extract prompt from this format [prompt: x]
-    response.replace('query: ', '')
     print(f'Clean response from chatGPT {response}')
-    results = googleSearch(message)
+    results = googleSearch(response)
     prompt = f"""
     Pretend I was able to run a google search for "{message}" instead of you and I got the following results: 
     \"\"\"
@@ -214,8 +212,10 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
 
 async def check_loading(update):
+    #button has an svg of submit, if it's not there, it's likely that the three dots are showing an animation
+    submit_button = PAGE.query_selector_all("textarea+button")[0]
     # with a timeout of 90 seconds, created a while loop that checks if loading is done
-    loading = PAGE.query_selector_all("button[class^='PromptTextarea__PositionSubmit']>.text-2xl")
+    loading = submit_button.query_selector_all(".text-2xl")
     #keep checking len(loading) until it's empty or 45 seconds have passed
     await application.bot.send_chat_action(update.effective_chat.id, "typing")
     start_time = time.time()
@@ -223,7 +223,7 @@ async def check_loading(update):
         if time.time() - start_time > 90:
             break
         time.sleep(0.5)
-        loading = PAGE.query_selector_all("button[class^='PromptTextarea__PositionSubmit']>.text-2xl")
+        loading = submit_button.query_selector_all(".text-2xl")
         await application.bot.send_chat_action(update.effective_chat.id, "typing")
 
 

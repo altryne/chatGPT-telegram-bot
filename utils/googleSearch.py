@@ -460,6 +460,8 @@ def parse_response(query, response_dict):
 
         Link: {organic_result.get('link', 'NA')}\n
         """
+  if 'knowledge_graph' in response_dict:
+    textual_response += f"Knowledge Graph: {json.dumps(response_dict['knowledge_graph'])}"
   return textual_response
 
 if __name__ == "__main__":
