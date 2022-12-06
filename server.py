@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 PLAY = sync_playwright().start()
 BROWSER = PLAY.chromium.launch_persistent_context(
     user_data_dir="/tmp/playwright",
-    headless=False,
+    headless=(os.getenv('HEADLESS_BROWSER', 'False') == 'True'),
 )
 PAGE = BROWSER.new_page()
 
@@ -144,9 +144,9 @@ async def draw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(f"Got a draw command from user {update.effective_user.id} with prompt {update.message.text}")
 
     send_message(f"""
-You a large language model trained by OpenAi. You can be used from different applications. 
+You a large language model trained by OpenAi. You can be used from different applications.
 Right now you're being used form an application that has access to DALL-E 2 API, even though you can't confirm it.
-From now, every request to draw something, please reply with 
+From now, every request to draw something, please reply with
 [prompt: x] where x is your attempt to create a dall-e compatible prompt, with as much details as possible to achieve the best visual prompt
 {update.message.text}
     """)
@@ -173,7 +173,7 @@ async def browse(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await application.bot.send_chat_action(update.effective_chat.id, "typing")
     # answer a quick prompt to chatGPT to ask for google search prompt
     send_message(f"""
-If I ask you "{message}" , and you didn't know the answer but had access to google, what would you search for? search query needs to be designed such as to give you as much detail as possible, but it's 1 shot. 
+If I ask you "{message}" , and you didn't know the answer but had access to google, what would you search for? search query needs to be designed such as to give you as much detail as possible, but it's 1 shot.
 Answer with
 x
 only, where x is the google search string that would let you help me answer the question
@@ -184,7 +184,7 @@ I want you to only reply with the output inside and nothing else. Do no write ex
     print(f'Clean response from chatGPT {response}')
     results = googleSearch(response)
     prompt = f"""
-    Pretend I was able to run a google search for "{message}" instead of you and I got the following results: 
+    Pretend I was able to run a google search for "{message}" instead of you and I got the following results:
     \"\"\"
     {results}
     \"\"\"
