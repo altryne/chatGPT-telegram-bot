@@ -36,7 +36,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandl
 from telegram.helpers import escape, escape_markdown
 
 if os.environ.get('TELEGRAM_USER_ID'):
-    USER_ID = int(os.environ.get('TELEGRAM_USER_ID'))
+    users = [int(user_id) for user_id in os.environ.get('TELEGRAM_USER_ID').split(",")]
 
 # Enable logging
 logging.basicConfig(
@@ -106,18 +106,18 @@ def get_last_message():
     return response
 
 # create a decorator called auth that receives USER_ID as an argument with wraps
-def auth(user_id):
+def auth(users):
     def decorator(func):
         @wraps(func)
         async def wrapper(update, context):
-            if update.effective_user.id == user_id:
+            if update.effective_user.id in users:
                 await func(update, context)
             else:
                 await update.message.reply_text("You are not authorized to use this bot")
         return wrapper
     return decorator
 
-@auth(USER_ID)
+@auth(users)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
@@ -126,12 +126,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=ForceReply(selective=True),
     )
 
-@auth(USER_ID)
+@auth(users)
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     await update.message.reply_text("Help!")
 
-@auth(USER_ID)
+@auth(users)
 async def reload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     print(f"Got a reload command from user {update.effective_user.id}")
@@ -139,7 +139,7 @@ async def reload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("Reloaded the browser!")
     await update.message.reply_text("Let's check if it's workin!")
 
-@auth(USER_ID)
+@auth(users)
 async def draw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(f"Got a draw command from user {update.effective_user.id} with prompt {update.message.text}")
 
@@ -167,7 +167,7 @@ async def respond_with_image(update, response):
                                      parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
 
 
-@auth(USER_ID)
+@auth(users)
 async def browse(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     message = update.message.text.replace('/browse','')
     await application.bot.send_chat_action(update.effective_chat.id, "typing")
@@ -199,7 +199,7 @@ I want you to only reply with the output inside and nothing else. Do no write ex
     else:
         await update.message.reply_text(response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
 
-@auth(USER_ID)
+@auth(users)
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message."""
     # Send the message to OpenAI
