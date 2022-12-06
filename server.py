@@ -1,4 +1,5 @@
 """Make some requests to OpenAI's chatbot"""
+import io
 import json
 import time
 import os
@@ -12,6 +13,7 @@ import nest_asyncio
 
 from utils.googleSearch import googleSearch
 from utils.sdAPI import drawWithStability
+from utils.textToSpeech import textToSpeech
 from functools import wraps
 nest_asyncio.apply()
 dotenv.load_dotenv()
@@ -211,20 +213,40 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         await update.message.reply_text(response, parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
 
-async def check_loading(update):
+@auth(USER_ID)
+async def talk(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Echo the user message."""
+    # Send the message to OpenAI
+    clean_text = update.message.text.replace('/talk','')
+    send_message(clean_text)
+
+    await check_loading(update, telegram.constants.ChatAction.RECORD_VOICE)
+    response = get_last_message()
+    if "\[prompt:" in response:
+        await respond_with_image(update, response)
+    else:
+        # Todo - add TTS here to answer with TTS'd response
+        print(f"Generating TTS bytes from response {response}")
+        await application.bot.send_chat_action(update.effective_chat.id, telegram.constants.ChatAction.RECORD_VOICE)
+        tts_wav = textToSpeech(response)
+        sound = io.BytesIO(tts_wav)
+        await update.message.reply_voice(sound)
+        await update.message.reply_text(f"\[transcript\]\n{response}", parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+
+async def check_loading(update, activity_action=telegram.constants.ChatAction.TYPING):
     #button has an svg of submit, if it's not there, it's likely that the three dots are showing an animation
     submit_button = PAGE.query_selector_all("textarea+button")[0]
     # with a timeout of 90 seconds, created a while loop that checks if loading is done
     loading = submit_button.query_selector_all(".text-2xl")
     #keep checking len(loading) until it's empty or 45 seconds have passed
-    await application.bot.send_chat_action(update.effective_chat.id, "typing")
+    await application.bot.send_chat_action(update.effective_chat.id, activity_action)
     start_time = time.time()
     while len(loading) > 0:
         if time.time() - start_time > 90:
             break
         time.sleep(0.5)
         loading = submit_button.query_selector_all(".text-2xl")
-        await application.bot.send_chat_action(update.effective_chat.id, "typing")
+        await application.bot.send_chat_action(update.effective_chat.id, activity_action)
 
 
 def start_browser():
@@ -241,6 +263,8 @@ def start_browser():
         application.add_handler(CommandHandler("help", help_command))
         application.add_handler(CommandHandler("draw", draw))
         application.add_handler(CommandHandler("browse", browse))
+        application.add_handler(CommandHandler("talk", talk))
+
 
         # on non command i.e message - echo the message on Telegram
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
