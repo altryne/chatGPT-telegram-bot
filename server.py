@@ -77,9 +77,7 @@ def is_logged_in():
 
 def send_message(message):
     # Send the message
-    print(message)
     box = get_input_box()
-    print(box)
     box.click()
     box.fill(message)
     box.press("Enter")
