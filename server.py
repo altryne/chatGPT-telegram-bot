@@ -245,7 +245,7 @@ def start_browser():
         print("Press enter when you're done")
         
         PAGE.locator("button", has_text="Log in").click()
-        print(PAGE.content())
+
         username = PAGE.locator('input[name="username"]')
         username.fill(OPEN_AI_EMAIL)
         username.press("Enter")
