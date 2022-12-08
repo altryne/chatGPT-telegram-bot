@@ -78,11 +78,12 @@ class AtrributeError:
     pass
 
 
-def get_last_message():
+def get_last_message(escape_text='markdown'):
     """Get the latest message"""
     page_elements = PAGE.query_selector_all("div[class*='request-']")
     last_element = page_elements[-1]
     prose = last_element
+    return_style = 'text' # could be text / code
     try:
         code_blocks = prose.query_selector_all("pre")
     except Exception as e:
@@ -103,9 +104,20 @@ def get_last_message():
                 response += escape_markdown(text, version=2)
         response = response.replace("<code\>", "`")
         response = response.replace("</code\>", "`")
+        return_style = 'code'
     else:
-        response = escape_markdown(prose.inner_text(), version=2)
-    return response
+        if escape_text == 'markdown':
+            # Return escaped markdown
+            response = escape_markdown(prose.inner_text(), version=2)
+        elif escape_text == 'html':
+            # in case we need HTML, we can return HTML as well, to parse paragraphs and stuff
+            # returns the playwright element to be able to parse it later
+            response = prose
+        else:
+            # Return raw text
+            response = prose.inner_text()
+
+    return response, return_style
 
 # create a decorator called auth that receives USER_ID as an argument with wraps
 def auth(user_id):
@@ -246,8 +258,8 @@ async def talk(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     send_message(clean_text)
 
     await check_loading(update, telegram.constants.ChatAction.RECORD_VOICE)
-    response = get_last_message()
-    if "\[prompt:" in response:
+    response = get_last_message(escape_text='html')
+    if "\[prompt:" in response.get_text():
         await respond_with_image(update, response)
     else:
         # Todo - add TTS here to answer with TTS'd response

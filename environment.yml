@@ -8,4 +8,4 @@ dependencies:
     - python-telegram-bot==20.0a6
     - requests
     - google-search-results
-    -
+    - whisper @ git+https://github.com/openai/whisper.git@main#egg=whisper==1.2.6
