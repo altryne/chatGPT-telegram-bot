@@ -9,7 +9,7 @@ def textToSpeech(text, **kwargs):
   payload = json.dumps({
     "voice": "Hunter",
     "content": [
-
+      text
     ]
   })
   headers = {
@@ -21,3 +21,4 @@ def textToSpeech(text, **kwargs):
   response = requests.request("POST", url, headers=headers, data=payload)
 
   print(f"{response.json()}")
+  return response.json().get('payload')[0]

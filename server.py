@@ -1,9 +1,12 @@
 """Make some requests to OpenAI's chatbot"""
+import html
 import io
 import json
 import time
 import os
+import traceback
 
+import requests
 import telegram
 from playwright.sync_api import sync_playwright
 import logging
@@ -33,7 +36,7 @@ if __version_info__ < (20, 0, 0, "alpha", 1):
     )
 from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup
 
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
 
 from telegram.helpers import escape, escape_markdown
 
@@ -53,6 +56,7 @@ BROWSER = PLAY.chromium.launch_persistent_context(
     headless=False,
 )
 PAGE = BROWSER.new_page()
+VOICE_MODE = False
 
 """Start the bot."""
 # Create the Application and pass it your bot's token.
@@ -76,7 +80,6 @@ def send_message(message):
 
 class AtrributeError:
     pass
-
 
 def get_last_message(escape_text='markdown'):
     """Get the latest message"""
@@ -106,18 +109,9 @@ def get_last_message(escape_text='markdown'):
         response = response.replace("</code\>", "`")
         return_style = 'code'
     else:
-        if escape_text == 'markdown':
-            # Return escaped markdown
-            response = escape_markdown(prose.inner_text(), version=2)
-        elif escape_text == 'html':
-            # in case we need HTML, we can return HTML as well, to parse paragraphs and stuff
-            # returns the playwright element to be able to parse it later
-            response = prose
-        else:
-            # Return raw text
-            response = prose.inner_text()
-
-    return response, return_style
+        response = escape_markdown(prose.inner_text(), version=2)
+        return_style = 'markdown'
+    return response
 
 # create a decorator called auth that receives USER_ID as an argument with wraps
 def auth(user_id):
@@ -256,19 +250,53 @@ async def talk(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Send the message to OpenAI
     clean_text = update.message.text.replace('/talk','')
     send_message(clean_text)
-
     await check_loading(update, telegram.constants.ChatAction.RECORD_VOICE)
     response = get_last_message(escape_text='html')
-    if "\[prompt:" in response.get_text():
+    full_response = response
+    if len(full_response) > 1000:
+        # don't send too long messages
+        response = response[:1000]
+
+    if "\[prompt:" in response:
         await respond_with_image(update, response)
     else:
         # Todo - add TTS here to answer with TTS'd response
         print(f"Generating TTS bytes from response {response}")
-        await application.bot.send_chat_action(update.effective_chat.id, telegram.constants.ChatAction.RECORD_VOICE)
-        tts_wav = textToSpeech(response)
-        sound = io.BytesIO(tts_wav)
-        await update.message.reply_voice(sound)
-        await update.message.reply_text(f"\[transcript\]\n{response}", parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+        await application.bot.send_chat_action(update.effective_chat.id, telegram.constants.ChatAction.TYPING)
+        tts_wav_url = textToSpeech(response)
+        timeout = 180
+        while timeout > 0:
+            result = requests.get(tts_wav_url)
+            if result.status_code == 200:
+                break
+            else:
+                timeout -= 1
+                await application.bot.send_chat_action(update.effective_chat.id,
+                                                       telegram.constants.ChatAction.UPLOAD_VOICE)
+                time.sleep(1)
+        if timeout == 0:
+            await update.message.reply_text("Sorry, I'm having trouble processing your request. Please try again later.")
+        else:
+            # extract wav bytes from response
+            wav_bytes = result.content
+
+            await update.message.reply_voice(voice=wav_bytes)
+            await update.message.reply_text(f"\[transcript\]\n{full_response}", parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+
+async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Parses the CallbackQuery and updates the message text."""
+    query = update.callback_query
+    data = json.loads(query.data)
+    if data['type'] == 'tweet':
+        # CallbackQueries need to be answered, even if no notification to the user is needed
+        await query.answer()
+        full_response = data['text']
+        previous_text = update.message.text_markdown_v2_urled
+        print(previous_text)
+        await update.effective_user.send_message(text=f"\[Going to tweet \]\n{previous_text}", parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
+
+
+
 
 async def check_loading(update, activity_action=telegram.constants.ChatAction.TYPING):
     #button has an svg of submit, if it's not there, it's likely that the three dots are showing an animation
@@ -285,6 +313,33 @@ async def check_loading(update, activity_action=telegram.constants.ChatAction.TY
         loading = submit_button.query_selector_all(".text-2xl")
         await application.bot.send_chat_action(update.effective_chat.id, activity_action)
 
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log the error and send a telegram message to notify the developer."""
+    # Log the error before we do anything else, so we can see it even if something breaks.
+    logger.error(msg="Exception while handling an update:", exc_info=context.error)
+
+    # traceback.format_exception returns the usual python message about an exception, but as a
+    # list of strings rather than a single string, so we have to join them together.
+    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
+    tb_string = "".join(tb_list)
+
+    # Build the message with some markup and additional information about what happened.
+    # You might need to add some logic to deal with messages longer than the 4096 character limit.
+    update_str = update.to_dict() if isinstance(update, Update) else str(update)
+    message = (
+        f"An exception was raised while handling an update\n"
+        f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}"
+        "</pre>\n\n"
+        f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"
+        f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
+        f"<pre>{html.escape(tb_string)}</pre>"
+    )
+
+    # Finally, send the message
+    await context.bot.send_message(
+        chat_id=USER_ID, text=message, parse_mode=telegram.constants.ParseMode.HTML
+    )
+
 
 def start_browser():
     PAGE.goto("https://chat.openai.com/")
@@ -300,11 +355,14 @@ def start_browser():
         application.add_handler(CommandHandler("help", help_command))
         application.add_handler(CommandHandler("draw", draw))
         application.add_handler(CommandHandler("browse", browse))
-        application.add_handler(CommandHandler("talk", talk))
 
+        application.add_handler(CommandHandler("talk", talk))
+        application.add_handler(CallbackQueryHandler(button))
 
         # on non command i.e message - echo the message on Telegram
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+
+        application.add_error_handler(error_handler)
 
         # Run the bot until the user presses Ctrl-C
         application.run_polling()
