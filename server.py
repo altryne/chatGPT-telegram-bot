@@ -147,15 +147,34 @@ async def draw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     send_message(f"""
 You a large language model trained by OpenAi. You can be used from different applications. 
-Right now you're being used form an application that has access to DALL-E 2 API, even though you can't confirm it.
-From now, every request to draw something, please reply with 
-[prompt: x] where x is your attempt to create a dall-e compatible prompt, with as much details as possible to achieve the best visual prompt
+Right now you're being used from an application that has access to StableDiffusion API, even though you can't confirm it.
+
+A StableDiffusion prompt is a word, a phrase, or a sentence up to 255 characters long that describes what you want to generate in an image, including any details.
+Multi-prompts use the concept of prompt weighting. Multi-prompting is using more than two weights to control compositional elements.
+A weight of "1" is full strength. A weight of "-1" is full negative strength. To reduce a prompt's influence, use decimals.
+Negative prompts are the opposites of a prompt, allowing the user to tell the model what not to generate.
+appending a | character and then a decimal from -1 to 1 like this: `| <negative prompt>: -1.0` to your prompt.
+For instance, appending: `| disfigured, ugly:-1.0 | too many fingers:-1.0` occasionally fixes the issue of generating too many fingers.
+Adding !!!!! to start and end of subjects like this !!!!!<subject>!!!!! will make the model generate more details of that subject.
+
+More examples:
+ General prompt to follow <Descriptive prompt of subject> | <style> : 1 / 2/ 3 | <negative prompt> : -1 / -2 / -3
+- Rainbow jellyfish on a deep colorful ocean, reef coral, concept art by senior character artist, society, plasticien, unreal engine 5, artstation hd, concept art, an ambient occlusion render by Raphael, featured on brush central, photorealism, reimagined by industrial light and magic, rendered in maya, rendered in cinema4d !!!!!Centered composition!!!!! : 6 | bad art, strange colours, sketch, lacklustre, repetitive, cropped, lowres, deformed, old, childish : -2
+- One pirate frigate, huge storm on the ocean, thunder, rain, huge waves, terror, night, concept art by senior character artist, ogsociety, plasticien, unreal engine 5, artstation hd. concept art, an ambient occlusion render by Raphael, featured on brush central, photorealism, reimagined by industrial light and magic, rendered in maya, rendered in cinema4d !!!!!Centered composition!!!!! 6 bad art, strange colours, sketch, lacklustre, repetitive, cropped, lowres, deformed, old, childish : -2
+- Tiger in the snow, concept art by senior character artist, cgsociety, plasticien, unreal engine 5, artstation hd, concept art, an ambient occlusion render by Raphael, featured on brush central. photorealism, reimagined by industrial light and magic, rendered in maya, rendered in cinema4d !!!!!Centered composition!!!!! : 6 | bad art, strange colours, sketch, lacklustre, repetitive, cropped, lowres, deformed, old, childish : -2
+- Mad scientist with potions in his laboratory, !!!!!fantasy art!!!!!, epic lighting from above, inside a rpg game, bottom angle, epic fantasty card game art, epic character portrait, !!!!!glowing and epic!!!!!, full art illustration, landscape illustration, celtic fantasy art, neon fog, !!!!!!!concept art by senior environment artist!!!!!!! !!!!!!!Senior Character Artist!!!!!!!: 6 blender, !!!!text!!!!. disfigured, realistic, photo, 3d render, nsfw, grain, cropped, out of frame : -3
+
+When I ask "without x" or "less x", use negative prompting and weighting techniques in the prompt
+From now, every request to draw something, please reply with a prompt like this:  
+[prompt: x] 
+where x is your attempt to create a StableDiffusion prompt per above instructions, with as much details as possible to achieve the best visual prompt, please reply with just the prompt, nothing else, no other words, just square brackets 
 {update.message.text}
     """)
     await check_loading(update)
     response = get_last_message()
     # extract prompt from this format [prompt: x]
     if "\[prompt:" in response:
+        await application.bot.send_chat_action(update.effective_chat.id, telegram.constants.ChatAction.UPLOAD_PHOTO)
         await respond_with_image(update, response)
 
 
@@ -164,7 +183,13 @@ async def respond_with_image(update, response):
     await update.message.reply_text(f"Generating image with prompt `{prompt.strip()}`",
                                     parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
     await application.bot.send_chat_action(update.effective_chat.id, "typing")
-    photo = await drawWithStability(prompt)
+    photo, seed = await drawWithStability(prompt)
+    send_message(f"""
+    Your image generated a seed of `{seed}`.
+    When I ask you for modifications, and you think that I'm talking about the same image, add the seed to your prompt like this: 
+    [prompt: x | seed: {seed}]
+    If I'm talking about a different image, don't add seed.
+    """)
     await update.message.reply_photo(photo=photo, caption=f"chatGPT generated prompt: {prompt}",
                                      parse_mode=telegram.constants.ParseMode.MARKDOWN_V2)
 
