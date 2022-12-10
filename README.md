@@ -35,6 +35,9 @@ This is a Telegram bot that lets you chat with the [chatGPT](https://github.com/
 ### Step 4: Set up your Telegram bot
 
 1. Set up your Telegram bot token and user ID in the `.env` file. See [these instructions](https://core.telegram.org/bots/tutorial#obtain-your-bot-token) for more information on how to do this.
+
+> How to obtain telegram user id? Add telegram [userinfobot](https://t.me/useridinfobot) to your telegram contacts
+
 2. Edit the `.env.example` file, rename it to `.env`, and place your values in the appropriate fields.
 
 ### Step 5: Set up your API keys
@@ -42,6 +45,7 @@ This is a Telegram bot that lets you chat with the [chatGPT](https://github.com/
 1. Copy the `.env.example` file and rename the copy to `.env`.
 2. To use the `/draw` command, you will need to obtain an API key for stable diffusion. To do this, go to [Dream Studio Beta](https://beta.dreamstudio.ai/membership?tab=home) and sign up for a free membership.
 3. SERP_API_KEY is optional. If you want to use the `/browse` command, you will need to obtain an API key for SERP. To do this, go to [SERP API](https://serpapi.com/) and sign up for a free account.
+
 ### Step 5: Run the server
 
 1. Open a terminal or command prompt.
@@ -53,6 +57,26 @@ This is a Telegram bot that lets you chat with the [chatGPT](https://github.com/
 1. Open the Telegram app on your device.
 2. Find your bot in the list of contacts (you should have already created it with @botfather).
 3. Start chatting with your bot.
+
+## If you're using Docker inside a server (headless mode)
+
+You can use the docker image to launch your bot in a server (using playwright headless mode)
+
+`docker-compose` example
+
+```docker-compose
+services:
+  chatgpt-telegram-bot:
+    image: ghcr.io/altryne/chatGPT-telegram-bot
+    container_name: chatgpt-telegram-bot
+    environment:
+      - TELEGRAM_API_KEY=
+      - TELEGRAM_USER_ID= #Use this with your user ID to restrict usage only to your account
+      - STABILITY_API_KEY= #use this if you want the bot to draw things with stability AI as well
+      - SERP_API_KEY= #add this from serpapi if you want to enable the google search feature
+      - OPEN_AI_EMAIL= #openai login email. Needed for autologin in headless mode
+      - OPEN_AI_PASSWORD= #openai password. Needed for autologin in headless mode
+```
 
 ## Credits
 
