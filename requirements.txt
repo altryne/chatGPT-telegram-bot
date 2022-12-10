@@ -4,3 +4,4 @@ requests~=2.28.1
 google-search-results
 nest-asyncio==1.5.6
 python-telegram-bot==20.0a6
+playwright-stealth==1.0.5

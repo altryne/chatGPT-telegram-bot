@@ -5,6 +5,9 @@ import os
 
 import telegram
 from playwright.sync_api import sync_playwright
+
+from playwright_stealth import stealth_sync
+
 import logging
 
 import dotenv
@@ -38,6 +41,12 @@ from telegram.helpers import escape, escape_markdown
 if os.environ.get('TELEGRAM_USER_ID'):
     USER_ID = int(os.environ.get('TELEGRAM_USER_ID'))
 
+if os.environ.get('OPEN_AI_EMAIL'):
+    OPEN_AI_EMAIL = os.environ.get('OPEN_AI_EMAIL')
+
+if os.environ.get('OPEN_AI_PASSWORD'):
+    OPEN_AI_PASSWORD = os.environ.get('OPEN_AI_PASSWORD')
+
 # Enable logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -46,11 +55,13 @@ logger = logging.getLogger(__name__)
 
 
 PLAY = sync_playwright().start()
-BROWSER = PLAY.chromium.launch_persistent_context(
+# Chrome doesnt seem to work in headless, so we use firefox
+BROWSER = PLAY.firefox.launch_persistent_context(
     user_data_dir="/tmp/playwright",
-    headless=(os.getenv('HEADLESS_BROWSER', 'False') == 'True'),
+    headless=(os.getenv('HEADLESS_BROWSER', 'False') == 'True')
 )
 PAGE = BROWSER.new_page()
+stealth_sync(PAGE)
 
 """Start the bot."""
 # Create the Application and pass it your bot's token.
@@ -232,21 +243,40 @@ def start_browser():
     if not is_logged_in():
         print("Please log in to OpenAI Chat")
         print("Press enter when you're done")
-        input()
-    else:
+        
+        PAGE.locator("button", has_text="Log in").click()
 
-        # on different commands - answer in Telegram
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CommandHandler("reload", reload))
-        application.add_handler(CommandHandler("help", help_command))
-        application.add_handler(CommandHandler("draw", draw))
-        application.add_handler(CommandHandler("browse", browse))
+        username = PAGE.locator('input[name="username"]')
+        username.fill(OPEN_AI_EMAIL)
+        username.press("Enter")
 
-        # on non command i.e message - echo the message on Telegram
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+        password = PAGE.locator('input[name="password"]')
+        password.fill(OPEN_AI_PASSWORD)
+        password.press("Enter")
+        
+        # On first login
+        try:
+            next_button = PAGE.locator("button", has_text="Next")
+            next_button.click()
+            next_button = PAGE.locator("button", has_text="Next")
+            next_button.click()
+            next_button = PAGE.locator("button", has_text="Done")
+            next_button.click()
+        except:
+            pass
 
-        # Run the bot until the user presses Ctrl-C
-        application.run_polling()
+    # on different commands - answer in Telegram
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("reload", reload))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("draw", draw))
+    application.add_handler(CommandHandler("browse", browse))
+
+    # on non command i.e message - echo the message on Telegram
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+
+    # Run the bot until the user presses Ctrl-C
+    application.run_polling()
 
 if __name__ == "__main__":
     start_browser()
