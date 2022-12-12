@@ -67,7 +67,7 @@ You can use the docker image to launch your bot in a server (using playwright he
 ```docker-compose
 services:
   chatgpt-telegram-bot:
-    image: ghcr.io/altryne/chatGPT-telegram-bot
+    image: ghcr.io/altryne/chatgpt-telegram-bot
     container_name: chatgpt-telegram-bot
     environment:
       - TELEGRAM_API_KEY=
