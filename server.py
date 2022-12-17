@@ -89,10 +89,10 @@ class AtrributeError:
 
 def get_last_message():
     """Get the latest message"""
-    page_elements = PAGE.query_selector_all("div[class*='request-']")
-    last_element = page_elements[-1]
-    prose = last_element
     try:
+        page_elements = PAGE.query_selector_all(".prose")
+        last_element = page_elements[-1]
+        prose = last_element
         code_blocks = prose.query_selector_all("pre")
     except Exception as e:
         response = 'Server probably disconnected, try running /reload'
