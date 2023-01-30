@@ -89,7 +89,7 @@ class AtrributeError:
 
 def get_last_message():
     """Get the latest message"""
-    page_elements = PAGE.query_selector_all("div[class*='request-']")
+    page_elements = PAGE.query_selector_all("div[class*='lg:w-[calc(100%-115px)]']")
     last_element = page_elements[-1]
     prose = last_element
     try:
