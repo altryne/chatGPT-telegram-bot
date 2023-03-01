@@ -1,4 +1,4 @@
-# Deprecated - folks this repo will be unmaintaned until / if open AI releases a proper chatGPT API. 
+# BREAKING: ChatGPT API was just released, going to update this repo to use it! We're back baby! 
 
 # ChatGPT Telegram Bot
 
